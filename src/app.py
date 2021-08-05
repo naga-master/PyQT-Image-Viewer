@@ -1,26 +1,9 @@
-import sys, os
+import sys, os, pathlib
 from PyQt5 import QtGui
 
 from PyQt5.QtCore import QPoint, QRectF, QSize, QTimer, Qt, pyqtSignal
 from PyQt5.QtGui import QBrush, QColor,  QKeySequence, QPainter, QPixmap
-from PyQt5.QtWidgets import QApplication, QDesktopWidget,  QFrame, QGraphicsPixmapItem, QGraphicsScene, QGraphicsView, QGridLayout,  QLabel, QListWidget, QListWidgetItem, QMainWindow, QMenuBar, QSizePolicy,  QStatusBar, QVBoxLayout, QWidget
-
-
-
-DEFAULT_IMAGE_ALBUM_DIRECTORY = '/home/alai/GUI-Dev/pyqt-app/PyQt_Photo_Album_Desktop_App/my-album'
-
-## Check that a file name has a valid image extension for QPixmap
-def filename_has_image_extension(filename):
-    valid_img_extensions = \
-        ['bmp', 'gif', 'jpg', 'jpeg', 'png', 'pbm', 'pgm', 'ppm', 'xbm', 'xpm']
-    filename = filename.lower()
-    extension = filename[-3:]
-    four_char = filename[-4:] ## exclusively for jpeg
-    if not extension in valid_img_extensions or four_char in valid_img_extensions:
-        return False
-
-    return True
-
+from PyQt5.QtWidgets import QApplication, QDesktopWidget, QFileDialog,  QFrame, QGraphicsPixmapItem, QGraphicsScene, QGraphicsView, QGridLayout,  QLabel, QListWidget, QListWidgetItem, QMainWindow, QMenuBar, QSizePolicy,  QStatusBar, QVBoxLayout, QWidget
 
 
 
@@ -45,7 +28,6 @@ class PhotoViewer(QGraphicsView):
         self.setAlignment(Qt.AlignCenter)
         self._photo.setTransformationMode(Qt.SmoothTransformation | QPainter.Antialiasing)
         
-
         
     def hasPhoto(self):
         return not self._empty
@@ -64,18 +46,13 @@ class PhotoViewer(QGraphicsView):
 
                 if not factor > 1:  #restrict scale the small images 
                     self.scale(factor, factor)
-                    print(unity, viewrect, scenerect)
-                    print(factor)
+
                 if rect.width() > 400 and factor < 0.04:
                     #came here because viewrect gives wrong value
                     print('View Rect Wrong Value')
-                    print(unity, viewrect, scenerect)
-                    print(factor)
-                    #print(self._photo.pixmap().width(),self._photo.pixmap().width()/scenerect.width())
-                    #self.scale(factor*1000, factor*1000)
                     self.scale(factor, factor)
                     QTimer.singleShot(0, self.fitInView)
-                #self.scale(0.5,0.5)
+                
 
             self._zoom = 0
 
@@ -144,8 +121,6 @@ class ThumbnailWidget (QWidget):
         )
         
         self.setLayout(self.thumbnailQVBoxLayout)
-
-
         
     
     def setTextUp (self, filename):
@@ -164,13 +139,16 @@ class ThumbnailWidget (QWidget):
             Qt.SmoothTransformation
         )
         self.thumbnail_image_label.setPixmap(pixmap)
-        self.thumbnailQVBoxLayout.addWidget(self.thumbnail_image_label)        
+        self.thumbnailQVBoxLayout.addWidget(self.thumbnail_image_label)    
+
 
 class ImageWidget(QWidget):
     def __init__(self, avail_screen_size, parent = None):
         super().__init__()
         
         self.items_dict ={}
+        self.image_directory = '/home/alai/GUI-Dev/pyqt-app/PyQt_Photo_Album_Desktop_App/my-album'
+
         self.VBlayout = QVBoxLayout(self)
         self.viewer = PhotoViewer(self)
         self.myQListWidget = QListWidget(self)
@@ -179,18 +157,20 @@ class ImageWidget(QWidget):
         self.VBlayout.setAlignment(Qt.AlignCenter)    
 
         self.myQListWidget.itemSelectionChanged.connect(self.itemselected) #signal definition for listwidget selection
-
         self.myQListWidget.setFixedHeight(200)
         self.myQListWidget.setFlow(0)
         self.myQListWidget.setFocusPolicy(Qt.NoFocus)
         
         self.setLayout(self.VBlayout)
 
-        files = [f for f in os.listdir(DEFAULT_IMAGE_ALBUM_DIRECTORY) if os.path.isfile(os.path.join(DEFAULT_IMAGE_ALBUM_DIRECTORY, f))]
+        files = [f for f in os.listdir(self.image_directory) if os.path.isfile(os.path.join(self.image_directory, f))]
    
         for index, file in enumerate(sorted(files)):
+            if self.filename_has_image_extension(file) is False: 
+                print(file, 'Skipped due non valid extension')
+                continue
             
-            filepath =os.path.join(DEFAULT_IMAGE_ALBUM_DIRECTORY,file)
+            filepath =os.path.join(self.image_directory,file)
 
             myThumbnailWidget = ThumbnailWidget() # Create ThumbnailWidget
             myQListWidgetItem = QListWidgetItem(self.myQListWidget) # Create QListWidgetItem
@@ -214,7 +194,7 @@ class ImageWidget(QWidget):
         cur_selected_item = self.myQListWidget.currentItem()  #get current selected item
         keys=self.get_item_index(self.items_dict, cur_selected_item) # find the selected item index
         if len(keys) > 1: print('multiple items returned')
-
+        
         if key_pressed in [Qt.Key_Up, Qt.Key_Right]:
             
             cur_selected_index = keys[0] + 1     #increament the current to next index 
@@ -239,6 +219,17 @@ class ImageWidget(QWidget):
         if len(keys) > 1: print('multiple items returned')
         self.viewer.setPhoto(QPixmap(self.items_dict[keys[0]][1]))   
 
+    ## Check that a file name has a valid image extension for QPixmap
+    def filename_has_image_extension(self, filename):
+        valid_img_extensions = \
+            ['.bmp', '.gif', '.jpg', '.jpeg', '.png', '.pbm', '.pgm', '.ppm', '.xbm', '.xpm']
+        filename = filename.lower()
+        extension= pathlib.Path(filename).suffix
+        if not extension in valid_img_extensions :
+            return False
+
+        return True
+
 
         
 
@@ -254,17 +245,15 @@ class Window(QMainWindow):
         self.setMinimumSize(QSize(500,500))
         self.setStyleSheet(stylesheet)
         
-        
-        
+                
     def _createMenu(self):
-        self.menu = self.menuBar(
-        )
+        self.menu = self.menuBar()
         file_menu = self.menu.addMenu('File')
-        save_act =  file_menu.addAction('Save')
+        open_act =  file_menu.addAction('Open', self.opendirectory)
         file_menu.addSeparator()
         quit_act = file_menu.addAction('Quit', self.close)
 
-        save_act.setShortcut(QKeySequence.Save)
+        open_act.setShortcut(QKeySequence.Open)
         quit_act.setShortcut(QKeySequence.Quit)
         
 
@@ -291,6 +280,14 @@ class Window(QMainWindow):
 
     def keyPressEvent(self, event):
         self.image_viewer.keyPressEvent(event)
+
+
+    def opendirectory(self):
+        self.dir_path=QFileDialog.getExistingDirectory(self,"Choose Directory")
+        print(self.dir_path)
+
+
+    
         
 
 stylesheet='''
