@@ -98,7 +98,6 @@ class PhotoViewer(QGraphicsView):
 
 
 class ThumbnailWidget (QWidget):
-    custom_widget_clicked = pyqtSignal(str)
 
     def __init__ (self, parent = None):
         super(ThumbnailWidget, self).__init__(parent)
@@ -142,11 +141,11 @@ class ThumbnailWidget (QWidget):
 
 
 class ImageWidget(QWidget):
-    def __init__(self,  parent=None):
+    def __init__(self, folder, parent=None):
         super(ImageWidget, self).__init__()
         
         self.items_dict ={}
-        self.image_directory = '/home/alai/GUI-Dev/pyqt-app/PyQt_Photo_Album_Desktop_App/my-album'
+        self.image_directory = folder
         print(self.image_directory)
 
         self.VBlayout = QVBoxLayout(self)
@@ -173,6 +172,7 @@ class ImageWidget(QWidget):
         files = [f for f in os.listdir(directory) if os.path.isfile(os.path.join(directory, f)) and self.filename_has_image_extension(f)]
    
         for index, file in enumerate(sorted(files)):
+            #print(file)
             
             filepath =os.path.join(directory,file)
 
@@ -234,13 +234,10 @@ class ImageWidget(QWidget):
 
         return True
 
-    @pyqtSlot(str)
-    def update_foldername(self, folderpath):
-        self.image_directory = folderpath
+    
 
 class FolderDialog(QWidget):
 
-    folder_submit =  pyqtSignal(str)
 
     def __init__(self):
         super(FolderDialog, self).__init__()
@@ -256,7 +253,7 @@ class FolderDialog(QWidget):
         browse_button = QPushButton(
             'Browse',
             clicked = self.open_directory)
-        ok_button = QPushButton(
+        self.ok_button = QPushButton(
             'Ok',
             clicked = self.on_ok
         )
@@ -274,7 +271,7 @@ class FolderDialog(QWidget):
         widget_frame.setColumnStretch(1,1)
         
 
-        ok_cancel_layout.addWidget(ok_button)
+        ok_cancel_layout.addWidget(self.ok_button)
         ok_cancel_layout.addWidget(cancel_button)
 
         folder_layout.addWidget(self.folder_entry)
@@ -285,7 +282,6 @@ class FolderDialog(QWidget):
         widget_frame.addLayout(ok_cancel_layout,1,0,1,2)
 
         self.setLayout(widget_frame)
-        
         
         self.center()
         #self.show()
@@ -299,20 +295,20 @@ class FolderDialog(QWidget):
 
     def open_directory(self):
         self.folder_path =  QFileDialog.getExistingDirectory(self,'Choose Directory')
-        print(self.folder_path)
+        #print(self.folder_path)
         self.folder_entry.setText(self.folder_path)
 
     def on_ok(self):
         self.folder_path=self.folder_entry.text()
-        print(self.folder_path)
-        self.folder_submit.emit(self.folder_submit)
+        #print(self.folder_path)
 
 
 
 class MainWindow(QMainWindow):
-    def __init__(self,  parent=None):
+    def __init__(self, foldername,parent=None):
         super(MainWindow, self).__init__(parent)
         self.setWindowTitle('app')
+        self.folder = foldername
         self._createMenu()
         self._setlayout()
         self._createStatusBar()
@@ -320,18 +316,15 @@ class MainWindow(QMainWindow):
         self.setGeometry(0,0,screen.width(),screen.height())
         self.setMinimumSize(QSize(500,500))
         self.setStyleSheet(stylesheet)
-        
-        
-        
                 
     def _createMenu(self):
         self.menu = self.menuBar()
         file_menu = self.menu.addMenu('File')
-        open_act =  file_menu.addAction('Open', self.opendirectory)
+        self.open_act =  file_menu.addAction('Open')
         file_menu.addSeparator()
         quit_act = file_menu.addAction('Quit', self.close)
 
-        open_act.setShortcut(QKeySequence.Open)
+        self.open_act.setShortcut(QKeySequence.Open)
         quit_act.setShortcut(QKeySequence.Quit)
         
 
@@ -348,7 +341,7 @@ class MainWindow(QMainWindow):
         self.setCentralWidget(widget)
 
     def _addImageWidget(self):
-        self.image_viewer = ImageWidget(self)
+        self.image_viewer = ImageWidget(self.folder)
         self.image_layout.addWidget(self.image_viewer,1,0)
         self.image_layout.addWidget(self.image_viewer.myQListWidget,2,0)
 
@@ -359,14 +352,6 @@ class MainWindow(QMainWindow):
     def keyPressEvent(self, event):
         self.image_viewer.keyPressEvent(event)
 
-
-    def opendirectory(self):
-        self.dir_path=QFileDialog.getExistingDirectory(self,"Choose Directory")
-        print(self.dir_path)
-        self.image_viewer.buildMainWidgets(self.dir_path)
-
-
-    
         
 
 stylesheet='''
@@ -446,46 +431,36 @@ stylesheet='''
         '''
 
 
-class Main:
-    def __init__(self) -> None:
-        foldername  = self.check_folder()
+class MainApp(QApplication):
+    def __init__(self, argv):
+        super().__init__(argv)
+
+        self.folder_window =  FolderDialog()
         
-        if not foldername:
-            print(foldername)
-            folderwidget=FolderDialog()
-            folderwidget.show()
+        self.folder_window.ok_button.clicked.connect(self.openMainWindow)
+        self.folder_window.ok_button.clicked.connect(self.folder_window.close)
 
-        #window = MainWindow()
-        #window.show()
+        self.folder_window.show()
 
-    def check_folder(self):
-        foldername = self.read_json()
-        if not os.path.isdir(foldername): 
-            print('FolderName Doesn\'t exist')
-            return False
-        return foldername
-        
+    def openMainWindow(self):
+        self.main_window = MainWindow(self.folder_window.folder_path)
+        self.main_window.open_act.triggered.connect(self.closeMainWindow)
+        self.main_window.open_act.triggered.connect(self.folder_window.show)
+        self.main_window.show()
+
+    def closeMainWindow(self):
+        self.main_window.close()
+        self.folder_window.folder_entry.clear()
 
 
-    def read_json(self):
-        with open('/home/alai/GUI-Dev/PyQT-Image-Viewer/src/config.json') as file:
-            json_data =  file.read()
-            json_data=json.loads(json_data)
-            if not json_data['foldername'] == "": return json_data['foldername']
-            return False
-        
-    def write_json(self, foldername):
-        with open('/home/alai/GUI-Dev/PyQT-Image-Viewer/src/config.json', 'w') as file:
-            json_data = json.dumps({'foldername':foldername})
-            file.write(json_data)
+
+
+
 
 
 
 if __name__ =="__main__":
     
-    app = QApplication(sys.argv)
-    #Main()
-    window = MainWindow()
-    window.show()
+    app = MainApp(sys.argv)
     sys.exit(app.exec_())
 
