@@ -161,7 +161,6 @@ class ImageWidget(QWidget):
         self.myQListWidget.setFocusPolicy(Qt.NoFocus)
         
         self.setLayout(self.VBlayout)
-
         self.buildMainWidgets(self.image_directory)
 
         
@@ -263,6 +262,26 @@ class FolderDialog(QWidget):
         )
 
         self.folder_entry.setPlaceholderText('Choose Directory')
+        self.setFixedWidth(400)
+        self.setFixedHeight(150)
+        self.setStyleSheet('''
+        QWidget{
+            background-color: #34373c;
+            color: #FFFFFF;
+            border: 2px solid #40454b;
+            border-radius: 10px;
+            padding: 6px;
+        }
+
+        QPushButton:hover {
+            background-color: #389bd9;
+        }
+
+        QLineEdit:focus {
+            border: 2px solid #389bd9;
+            border-radius: 10px;
+        }
+        ''')
    
 
         widget_frame.setHorizontalSpacing(10)
@@ -287,11 +306,10 @@ class FolderDialog(QWidget):
         #self.show()
 
     def center(self):
-        frameGm = self.frameGeometry()
-        screen = QApplication.desktop().screenNumber(QApplication.desktop().cursor().pos())
-        centerPoint = QApplication.desktop().screenGeometry(screen).center()
-        frameGm.moveCenter(centerPoint)
-        self.move(frameGm.topLeft())
+        qtRectangle = self.frameGeometry()
+        centerPoint = QDesktopWidget().availableGeometry().center()
+        qtRectangle.moveCenter(centerPoint)
+        self.move(qtRectangle.topLeft())
 
     def open_directory(self):
         self.folder_path =  QFileDialog.getExistingDirectory(self,'Choose Directory')
@@ -451,13 +469,6 @@ class MainApp(QApplication):
     def closeMainWindow(self):
         self.main_window.close()
         self.folder_window.folder_entry.clear()
-
-
-
-
-
-
-
 
 if __name__ =="__main__":
     
