@@ -139,7 +139,7 @@ class ThumbnailWidget (QWidget):
             Qt.SmoothTransformation
         )
         self.thumbnail_image_label.setPixmap(pixmap)
-        self.thumbnailQVBoxLayout.addWidget(self.thumbnail_image_label)    
+        self.thumbnailQVBoxLayout.addWidget(self.thumbnail_image_label) 
 
 
 class ImageWidget(QWidget):
@@ -175,7 +175,7 @@ class ImageWidget(QWidget):
         self.items_dict.clear() #clear the dictionary
 
         files = self.getImagesFromDirectory(directory)
-   
+        
         for index, file in enumerate(sorted(files)):
             
             filepath =join(directory,file)
@@ -191,8 +191,8 @@ class ImageWidget(QWidget):
             self.items_dict[index] = (myQListWidgetItem, filepath)
             # Add QListWidgetItem into QListWidget
             self.myQListWidget.addItem(myQListWidgetItem)
-            self.myQListWidget.setItemWidget(myQListWidgetItem, 
-                                myThumbnailWidget)
+            self.myQListWidget.setItemWidget(myQListWidgetItem, myThumbnailWidget)
+        
 
     def keyPressEvent(self, event):
         key_pressed = event.key()

@@ -62,7 +62,7 @@ MAINWINDOW_THEME = '''
             border-radius: 7px;
         }
 
-        QScrollBar::handle:horizontal:hover,QScrollBar::handle:horizontal:pressed {
+        QScrollBar::handle:horizontal:hover,QScrollBar::handle:horizontal:pressed, QScrollBar::handle:vertical:hover,QScrollBar::handle:vertical:pressed {
             background-color: #6a6ea9;
 
         }
