@@ -1,6 +1,6 @@
 from PyQt5.QtWidgets import QDesktopWidget, QFileDialog, QWidget, QGridLayout, QHBoxLayout, QLineEdit, QPushButton
 from themes import themes
-import os
+from os.path import isdir
 
 class FolderDialog(QWidget):
 
@@ -57,7 +57,6 @@ class FolderDialog(QWidget):
         self.setLayout(widget_frame)
         
         self.center()
-        #self.show()
 
     def center(self):
         qtRectangle = self.frameGeometry()
@@ -67,7 +66,6 @@ class FolderDialog(QWidget):
 
     def open_directory(self):
         self.folder_path =  QFileDialog.getExistingDirectory(self,'Choose Directory')
-        #print(self.folder_path)
         self.folder_entry.setText(self.folder_path)
 
     def on_ok(self):
@@ -75,8 +73,7 @@ class FolderDialog(QWidget):
         
     def on_text_change(self):
         self.folder_path=self.folder_entry.text()
-        if not os.path.isdir(self.folder_path):
-            self.authenticate = False
+        if not isdir(self.folder_path):
             self.folder_entry.setStyleSheet(
                 '''
                 #folderentry{
@@ -91,7 +88,6 @@ class FolderDialog(QWidget):
             self.authenticate = False
         else:
             #print('valid folder')
-            self.authenticate = True
             self.folder_entry.setStyleSheet(
                 '''
                 #folderentry{
@@ -100,6 +96,5 @@ class FolderDialog(QWidget):
                     border-radius : 10px;
                 }
                 '''
-            )
-            
+            )            
             self.authenticate = True

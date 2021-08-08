@@ -1,8 +1,7 @@
-import sys, os, pathlib, json
-from PyQt5 import QtGui
-from PyQt5.QtCore import QPoint, QRectF, QSize, QTimer, Qt, pyqtSignal, pyqtSlot
-from PyQt5.QtGui import QBrush, QColor,  QKeySequence, QPainter, QPixmap
-from PyQt5.QtWidgets import QApplication, QDesktopWidget, QFileDialog,  QFrame, QGraphicsPixmapItem, QGraphicsScene, QGraphicsView, QGridLayout, QHBoxLayout,  QLabel, QLineEdit, QListWidget, QListWidgetItem, QMainWindow, QMenuBar, QPushButton, QSizePolicy,  QStatusBar, QVBoxLayout, QWidget
+import sys
+from PyQt5.QtCore import QSize
+from PyQt5.QtGui import QKeySequence,  QPixmap
+from PyQt5.QtWidgets import QApplication, QDesktopWidget,  QGridLayout, QMainWindow,  QStatusBar, QWidget
 from widgets.folderwidget import FolderDialog
 from widgets.imageviewer import ImageWidget
 from themes import themes
@@ -67,8 +66,7 @@ class MainApp(QApplication):
         self.folder_window =  FolderDialog()  #load folder widget
         
         self.folder_window.ok_button.clicked.connect(self.showMainWindow)
-        self.folder_window.ok_button.clicked.connect(self.folder_window.close)
-        
+        self.folder_window.ok_button.clicked.connect(self.folder_window.close)      
         self.folder_window.show()
 
     def showMainWindow(self):
