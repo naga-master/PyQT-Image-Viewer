@@ -1,16 +1,27 @@
 import sys
-from PyQt5.QtCore import QObject, QSize
+from os.path import join
+from PyQt5.QtCore import QObject, QSize, QThread, pyqtSignal, pyqtSlot
 from PyQt5.QtGui import QKeySequence,  QPixmap
 from PyQt5.QtWidgets import QApplication, QDesktopWidget,  QGridLayout, QMainWindow,  QStatusBar, QWidget
 from widgets.folderwidget import FolderDialog
-from widgets.imageviewer import ImageWidget
+from widgets.imageviewer import ImageWidget , ThumbnailWidget
 from themes import themes
 
 
-#class Worker(QObject):
+class Worker(QObject):
+    thumbnail_signal =  pyqtSignal(int, str, str)
+    @pyqtSlot(str)
+    def get_files(self, directory):
+        files =  ImageWidget(directory).getImagesFromDirectory(directory)
+
+        for index, file in enumerate(sorted(files)):
+            self.thumbnail_signal.emit(index, file, directory)
+
 
 
 class MainWindow(QMainWindow):
+    files_requested = pyqtSignal(str)
+
     def __init__(self, foldername,parent=None):
         super(MainWindow, self).__init__(parent)
         self.setWindowTitle('app')
@@ -22,6 +33,13 @@ class MainWindow(QMainWindow):
         self.setGeometry(0,0,screen.width(),screen.height())
         self.setMinimumSize(QSize(500,500))
         self.setStyleSheet(themes.MAINWINDOW_THEME)
+
+        self.worker = Worker()
+        self.worker_thread = QThread()
+        self.files_requested.connect(self.worker.get_files)
+        self.worker.thumbnail_signal.connect(self.image_viewer.thumbnailRePaint)
+        self.worker.moveToThread(self.worker_thread)
+        self.worker_thread.start()
                 
     def _createMenu(self):
         self.menu = self.menuBar()
@@ -49,14 +67,14 @@ class MainWindow(QMainWindow):
     def _addImageWidget(self):
         self.image_viewer = ImageWidget(self.folder)
         self.image_layout.addWidget(self.image_viewer,1,0)
-        self.image_layout.addWidget(self.image_viewer.myQListWidget,2,0)
+        self.image_layout.addWidget(self.image_viewer.ListWidget,2,0)
+        #self.image_viewer.setFirstImage()
 
-        self.image_viewer.myQListWidget.setCurrentItem(self.image_viewer.items_dict[0][0]) #set current index to zero
-        image = QPixmap(self.image_viewer.items_dict[0][1])
-        self.image_viewer.viewer.setPhoto(image) #display first image 
+        
 
     def keyPressEvent(self, event):
         self.image_viewer.keyPressEvent(event)
+        
 
 
 
@@ -75,7 +93,10 @@ class MainApp(QApplication):
 
     def showMainWindow(self):
         if self.folder_window.authenticate:
+            print(self.folder_window.folder_path)
             self.main_window = MainWindow(self.folder_window.folder_path) #load main widget
+            
+            self.main_window.files_requested.emit(self.folder_window.folder_path)
             self.main_window.open_act.triggered.connect(self.closeMainWindow)
             self.main_window.open_act.triggered.connect(self.folder_window.show)
             self.main_window.show()

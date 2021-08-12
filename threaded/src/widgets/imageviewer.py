@@ -2,7 +2,7 @@ from PyQt5.QtCore import QPoint, pyqtSignal
 from PyQt5.QtGui import QBrush, QImage
 from PyQt5.QtCore import QPoint, QRectF, QSize, QTimer, Qt, pyqtSignal
 from PyQt5.QtGui import QBrush, QColor,  QPainter, QPixmap
-from PyQt5.QtWidgets import QFrame, QGraphicsPixmapItem, QGraphicsScene, QGraphicsView,QLabel, QListWidget, QListWidgetItem, QVBoxLayout, QWidget
+from PyQt5.QtWidgets import QFrame, QGraphicsPixmapItem, QGraphicsScene, QGraphicsView, QGridLayout,QLabel, QListWidget, QListWidgetItem, QVBoxLayout, QWidget
 from pathlib import Path
 from os import listdir
 from os.path import join,  isfile
@@ -107,6 +107,7 @@ class ThumbnailWidget (QWidget):
         self.thumbnailQVBoxLayout = QVBoxLayout()
         self.thumbnail_file_name_label = QLabel()
         self.thumbnail_image_label = QLabel()
+        self.pixmap = QImage()
 
         self.thumbnail_file_name_label.setAlignment(Qt.AlignCenter)
         self.thumbnail_image_label.setAlignment(Qt.AlignCenter)
@@ -132,8 +133,8 @@ class ThumbnailWidget (QWidget):
 
     def setImage(self, path):
         #pixmap = QPixmap(path)
-        pixmap = QImage(path)
-        pixmap = QPixmap.fromImage(pixmap).scaled(
+        self.pixmap = QImage(path)
+        self.pixmap = QPixmap.fromImage(self.pixmap).scaled(
             QSize(100,100),
             Qt.KeepAspectRatio,
             Qt.SmoothTransformation
@@ -144,8 +145,8 @@ class ThumbnailWidget (QWidget):
         #    Qt.KeepAspectRatio,
         #    Qt.SmoothTransformation
         #)
-        self.thumbnail_image_label.setPixmap(pixmap)
-        self.thumbnailQVBoxLayout.addWidget(self.thumbnail_image_label) 
+        #self.thumbnail_image_label.setPixmap(self.pixmap)
+        #self.thumbnailQVBoxLayout.addWidget(self.thumbnail_image_label) 
 
 
 class ImageWidget(QWidget):
@@ -154,79 +155,96 @@ class ImageWidget(QWidget):
         
         self.items_dict = {}
         self.image_directory = folder
+        print(self.image_directory)
 
         self.VBlayout = QVBoxLayout(self)
         self.viewer = PhotoViewer(self)
-        self.myQListWidget = QListWidget(self)
+        self.ListWidget = QListWidget(self)
 
         self.VBlayout.addWidget(self.viewer) # add main image graphicsscene widget to layout
         self.VBlayout.setAlignment(Qt.AlignCenter)    
 
-        self.myQListWidget.itemSelectionChanged.connect(self.itemselected) #signal definition for listwidget selection
-        self.myQListWidget.setFixedHeight(200)
-        self.myQListWidget.setFlow(0)
-        self.myQListWidget.setFocusPolicy(Qt.NoFocus)
+        self.ListWidget.itemSelectionChanged.connect(self.itemselected) #signal definition for listwidget selection
+        self.ListWidget.setFixedHeight(200)
+        self.ListWidget.setFlow(0)
+        self.ListWidget.setFocusPolicy(Qt.NoFocus)
         
         self.setLayout(self.VBlayout)
-        self.buildMainWidgets(self.image_directory)
 
     def getImagesFromDirectory(self, directory):
+        
         for file in listdir(directory):
             if isfile(join(directory, file)) and self.filename_has_image_extension(file):
                 yield file
 
+
+    def setFirstImage(self, item, path):
+        self.ListWidget.setCurrentItem(item)
+        image = QPixmap(path)
+        self.viewer.setPhoto(image)
+        
         
 
-    def buildMainWidgets(self, directory):
-        self.items_dict.clear() #clear the dictionary
+    def thumbnailRePaint(self, index, file, directory):
+        #print(file)
+        filepath =join(directory,file)
 
-        files = self.getImagesFromDirectory(directory)
+        Thumbnail  = ThumbnailWidget() # Create ThumbnailWidget
         
-        for index, file in enumerate(sorted(files)):
-            
-            filepath =join(directory,file)
-
-            myThumbnailWidget  = ThumbnailWidget() # Create ThumbnailWidget  
-            myQListWidgetItem = QListWidgetItem(self.myQListWidget) # Create QListWidgetItem
-            myThumbnailWidget.setImage(filepath)
-            myThumbnailWidget.setTextUp(file)
-                            
-            # Set size hint
-            myQListWidgetItem.setSizeHint(myThumbnailWidget.sizeHint())
-
-            self.items_dict[index] = (myQListWidgetItem, filepath)
-            # Add QListWidgetItem into QListWidget
-            self.myQListWidget.addItem(myQListWidgetItem)
-            self.myQListWidget.setItemWidget(myQListWidgetItem, myThumbnailWidget)
+        ListWidgetItem = QListWidgetItem(self.ListWidget) # Create QListWidgetItem
         
+        
+        Thumbnail.setImage(filepath)
+        Thumbnail.thumbnail_image_label.setPixmap(Thumbnail.pixmap)
+        Thumbnail.thumbnailQVBoxLayout.addWidget(Thumbnail.thumbnail_image_label)
+        Thumbnail.setTextUp(file)
+                        
+        # Set size hint
+        ListWidgetItem.setSizeHint(Thumbnail.sizeHint())
+        
+
+        self.items_dict[index] = (ListWidgetItem, filepath)
+        # Add QListWidgetItem into QListWidget
+        self.ListWidget.addItem(ListWidgetItem)
+        self.ListWidget.setItemWidget(ListWidgetItem, Thumbnail)
+
+        if not index:
+            self.setFirstImage(ListWidgetItem, filepath)
+        
+        
+
+
 
     def keyPressEvent(self, event):
         key_pressed = event.key()
         
-        cur_selected_item = self.myQListWidget.currentItem()  #get current selected item
+        cur_selected_item = self.ListWidget.currentItem()  #get current selected item
                 
         if key_pressed in [Qt.Key_Up, Qt.Key_Right]:
             key=next(self.get_item_index(self.items_dict, cur_selected_item)) # find the selected item index
             cur_selected_index = key+1 #key[0] + 1     #increament the current to next index 
             if cur_selected_index == len(self.items_dict): cur_selected_index = 0 #reset the index to first when the last image reached
-            self.myQListWidget.setCurrentItem(self.items_dict[cur_selected_index][0]) # set current index image
+            self.ListWidget.setCurrentItem(self.items_dict[cur_selected_index][0]) # set current index image
             
 
         elif key_pressed in [Qt.Key_Down, Qt.Key_Left]:
             key=next(self.get_item_index(self.items_dict, cur_selected_item)) # find the selected item index
             cur_selected_index =  key  #key[0] 
             if cur_selected_index == 0: cur_selected_index = len(self.items_dict) #reset the index to last when the first image selected
-            self.myQListWidget.setCurrentItem(self.items_dict[cur_selected_index-1][0]) # set current index image
+            self.ListWidget.setCurrentItem(self.items_dict[cur_selected_index-1][0]) # set current index image
             
 
     def get_item_index(self, dict, item):
         for key, value in dict.items():
             if value[0] ==  item:
                 yield key
+
+
+    
         
 
     def itemselected(self):
-        cur_selected_item = self.myQListWidget.selectedItems()
+        cur_selected_item = self.ListWidget.selectedItems()
         key=next(self.get_item_index(self.items_dict, cur_selected_item[0])) # find the selected item index
         #if len(key) > 1: print('multiple items returned')
         self.viewer.setPhoto(QPixmap(self.items_dict[key][1]))   
@@ -237,3 +255,6 @@ class ImageWidget(QWidget):
             ['.bmp', '.gif', '.jpg', '.jpeg', '.png', '.pbm', '.pgm', '.ppm', '.xbm', '.xpm']
         extension= Path(filename.lower()).suffix
         return extension in valid_img_extensions
+
+
+
